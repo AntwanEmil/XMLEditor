@@ -18,3 +18,28 @@ void Token::set_type(tokenType t)
 {
 	tType = t;
 }
+
+tokenType Token::get_type()
+{
+	return tType;
+}
+
+void Token::add_attribute(Attribute t)
+{
+	attributes.push_back(t);
+}
+
+list <Attribute> Token::get_attributes()
+{
+	return attributes;
+}
+
+void Token::add_data(string t)
+{
+	data.push_back(t);
+}
+
+list <string> Token::get_data()
+{
+	return data;
+}
