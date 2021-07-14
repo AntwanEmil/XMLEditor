@@ -202,3 +202,370 @@ list<string> *Controller::json(list<Token>* tt){
 }
 
 
+list<Token>* Controller::parsing(list<string>* FileInfo)
+{
+    list<Token>* tokensList = new list<Token>;
+    int charIndex = 0;
+    int qoutes = 0;
+    string tempStr = "";
+    string line;
+
+    list <string> ::iterator lineItr;
+    for (lineItr = FileInfo->begin(); lineItr != FileInfo->end(); lineItr++)
+    {
+        line = *lineItr;
+
+        charIndex = 0;
+        tempStr = "";
+
+        while (line[charIndex] != '\0')
+        {
+            Token t;
+            Attribute atrTemp;
+            while (line[charIndex] != '<')
+                charIndex++;
+            charIndex++;
+
+
+            /* parsing of comment tags */
+            if (line[charIndex] == '!' && line[charIndex+1] == '-' && line[charIndex+2] == '-')
+            {
+                t.set_type(comment);
+                charIndex += 3;
+
+                if (line[charIndex] == '\0')
+                {
+                    lineItr++;
+                    line = *lineItr;
+                    charIndex = 0;
+                }
+
+                while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                    charIndex++;
+
+                while (!(line[charIndex] == '-' && line[charIndex+1] == '-' && line[charIndex+2] == '>'))
+                {
+                    tempStr += line[charIndex];
+                    charIndex++;
+
+                    if (line[charIndex] == '\0')
+                    {
+                        lineItr++;
+                        line = *lineItr;
+                        charIndex = 0;
+                        t.add_data(tempStr);
+                        tempStr = "";
+
+                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                            charIndex++;
+                    }
+                }
+                t.add_data(tempStr);
+                tempStr = "";
+                charIndex += 3;
+            }
+
+            else
+            {
+                /* Parsing of selfClosing tags. */
+                if (line[charIndex] == '?')
+                {
+                    charIndex++;
+                    while (line[charIndex] != ' ' && line[charIndex] != '\t')
+                    {
+                        tempStr += line[charIndex];
+                        charIndex++;
+                    }
+                    charIndex++;
+                    t.set_type(selfClosing);
+                    t.set_name(tempStr);
+                    tempStr = "";
+
+                    while (line[charIndex] != '?')
+                    {
+                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                        {
+                            charIndex++;
+                        }
+
+                        while (qoutes < 2)
+                        {
+                            if (line[charIndex] == '=')
+                            {
+                                atrTemp.setKey(tempStr);
+                                tempStr = "";
+                                charIndex++;
+                            }
+                            tempStr += line[charIndex];
+                            if (line[charIndex] == '"')
+                                qoutes++;
+                            charIndex++;
+
+                        }
+                        qoutes = 0;
+                        atrTemp.setValue(tempStr);
+                        t.add_attribute(atrTemp);
+                        tempStr = "";
+
+                    }
+                    charIndex++;
+                    charIndex++;
+                }
+
+                /* Parsing of closing tags. */
+                else if (line[charIndex] == '/')
+                {
+                    charIndex++;
+                    while (line[charIndex] != '>')
+                    {
+                        tempStr += line[charIndex];
+                        charIndex++;
+                    }
+                    charIndex++;
+                    t.set_type(closing);
+                    t.set_name(tempStr);
+                    tempStr = "";
+                }
+
+                /* Parsing of DOCTYPE tags. */
+                else if (line[charIndex] == '!' && line[charIndex+1] == 'D' && line[charIndex+2] == 'O' && line[charIndex+3] == 'C')
+                {
+                    t.set_type(selfClosing);
+                    t.set_name("DOCTYPE");
+                    charIndex += 9;
+
+                    while(1)
+                    {
+                        while (!(line[charIndex] == ' ' || line[charIndex] == '\t' || line[charIndex] == '>'))
+                        {
+                            tempStr += line[charIndex];
+                            charIndex++;
+                        }
+                        atrTemp.setKey(tempStr);
+                        tempStr = "";
+                        atrTemp.setValue("");
+                        t.add_attribute(atrTemp);
+
+                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                            charIndex++;
+
+                        if(line[charIndex] == '>')
+                        {
+                            charIndex++;
+                            break;
+                        }
+                    }
+                }
+
+                /* Parsing of open tags */
+                else
+                {
+                    while (line[charIndex] != ' ' && line[charIndex] != '\t' && line[charIndex] != '>')
+                    {
+                        tempStr += line[charIndex];
+                        charIndex++;
+                    }
+                    t.set_type(open);
+                    t.set_name(tempStr);
+                    tempStr = "";
+
+                    while (line[charIndex] != '>')
+                    {
+                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                        {
+                            charIndex++;
+                        }
+                        if (line[charIndex] != '>')
+                        {
+                            if (line[charIndex] == '/')
+                            {
+                                t.set_type(selfClosing);
+                                charIndex++;
+                            }
+                            else
+                            {
+                                while (qoutes < 2)
+                                {
+                                    if (line[charIndex] == '=')
+                                    {
+                                        atrTemp.setKey(tempStr);
+                                        tempStr = "";
+                                        charIndex++;
+                                    }
+                                    tempStr += line[charIndex];
+                                    if (line[charIndex] == '"')
+                                        qoutes++;
+                                    charIndex++;
+
+                                }
+                                qoutes = 0;
+                                atrTemp.setValue(tempStr);
+                                t.add_attribute(atrTemp);
+                                tempStr = "";
+                            }
+                        }
+                    }
+                    charIndex++;
+                    if (line[charIndex] == '\0')
+                    {
+                        lineItr++;
+                        line = *lineItr;
+                        charIndex = 0;
+                    }
+
+                    while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                    {
+                        charIndex++;
+                    }
+                    while (line[charIndex] != '<')
+                    {
+                        tempStr += line[charIndex];
+                        charIndex++;
+
+                        if (line[charIndex] == '\0')
+                        {
+                            lineItr++;
+                            line = *lineItr;
+                            charIndex = 0;
+                            t.add_data(tempStr);
+                            tempStr = "";
+
+                            while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                                charIndex++;
+                        }
+                    }
+                    if (tempStr != "")
+                    {
+                        t.add_data(tempStr);
+                        tempStr = "";
+                    }
+                }
+            }
+            tokensList->push_back(t);
+        }
+    }
+    return tokensList;
+}
+
+
+list<string>* Controller::beautifyXML(list<Token>* tokens)
+{
+    int tabCount = 0;
+    list<string>* beautifyStr = new list<string>;
+    string tempStr = "";
+
+    list <Token> ::iterator tokenItr;
+    for (tokenItr = tokens->begin(); tokenItr != tokens->end(); tokenItr++)
+    {
+        list<string>::iterator infoItr;
+        list<Attribute>::iterator attributeItr;
+        list<string> info;
+        list<Attribute> attr;
+        int tokenType = tokenItr->get_type();
+
+        if (tokenType == open)
+        {
+            for (int i = 0; i < tabCount; i++)
+                tempStr += '\t';
+            tempStr = tempStr + '<' + tokenItr->get_name();
+
+            attr = tokenItr->get_attributes();
+            for (attributeItr = attr.begin(); attributeItr != attr.end(); attributeItr++)
+            {
+                tempStr = tempStr + " " + attributeItr->key() + "=" + attributeItr->value();
+            }
+            tempStr += '>';
+
+            beautifyStr->push_back(tempStr);
+            tempStr = "";
+
+            tabCount++;
+
+            info = tokenItr->get_data();
+            for (infoItr = info.begin(); infoItr != info.end(); infoItr++)
+            {
+                for (int i = 0; i < tabCount; i++)
+                    tempStr += '\t';
+                tempStr += *infoItr;
+                beautifyStr->push_back(tempStr);
+                tempStr = "";
+            }
+        }
+        else if (tokenType == closing)
+        {
+            tabCount--;
+            for (int i = 0; i < tabCount; i++)
+                tempStr += '\t';
+            tempStr = tempStr + "</" + tokenItr->get_name() + '>';
+            beautifyStr->push_back(tempStr);
+            tempStr = "";
+        }
+        else if (tokenType == comment)
+        {
+            int once = 1;
+            for (int i = 0; i < tabCount; i++)
+                tempStr += '\t';
+            tempStr = tempStr + "<!-- ";
+            info = tokenItr->get_data();
+            for (infoItr = info.begin(); infoItr != info.end(); infoItr++)
+            {
+                if (once)
+                {
+                    once = 0;
+                }
+                else
+                {
+                    beautifyStr->push_back(tempStr);
+                    tempStr = "";
+                    for (int i = 0; i < tabCount; i++)
+                        tempStr += '\t';
+                    tempStr += "        ";
+                }
+                tempStr += *infoItr;
+            }
+            tempStr += "-->";
+            beautifyStr->push_back(tempStr);
+            tempStr = "";
+        }
+        else if (tokenType == selfClosing)
+        {
+            string name = tokenItr->get_name();
+
+            for (int i = 0; i < tabCount; i++)
+                tempStr += '\t';
+
+            tempStr += '<';
+            if (name[0] == 'x' && name[1] == 'm' && name[2] == 'l')
+                tempStr = tempStr + '?';
+
+            else if(name == "DOCTYPE")
+            {
+                tempStr = tempStr + '!';
+            }
+
+            tempStr += name;
+
+            attr = tokenItr->get_attributes();
+            for (attributeItr = attr.begin(); attributeItr != attr.end(); attributeItr++)
+            {
+                if(name == "DOCTYPE")
+                     tempStr = tempStr + " " + attributeItr->key();
+                else
+                    tempStr = tempStr + " " + attributeItr->key() + "=" + attributeItr->value();
+            }
+
+            if (name[0] == 'x' && name[1] == 'm' && name[2] == 'l')
+                tempStr = tempStr + '?';
+            else if (name == "DOCTYPE")
+            {}
+            else
+                tempStr = tempStr + '/';
+            tempStr += '>';
+
+            beautifyStr->push_back(tempStr);
+            tempStr = "";
+        }
+    }
+
+    return beautifyStr;
+}
