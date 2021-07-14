@@ -110,7 +110,7 @@ void MainWindow::setActionsEnabled(bool enabled, bool isCon)
     this->ui->actionConvert_to_JSON->setEnabled(enabled);
     this->ui->actionMinify->setEnabled(enabled);
     this->ui->actionSave->setEnabled(enabled);
-    this->ui->actionOptimize->setEnabled(enabled);
+//    this->ui->actionOptimize->setEnabled(enabled);
     this->ui->actionClose->setEnabled(enabled);
     this->ui->actionColorize->setEnabled(enabled);
     this->ui->actionSolve_Inconsistency->setEnabled(isCon);
@@ -174,17 +174,24 @@ void MainWindow::updateState() {
 
 void MainWindow::openXML()
 {
-    QString newPath = QFileDialog::getOpenFileName(this, tr("Open XML"), QDir::currentPath(), "XML files (*.xml)");
+    QString newPath = QFileDialog::getOpenFileName(this, tr("Open XML"), QDir::currentPath(),
+                                                   "XML (*.xml);;compressed XML/JSON (*.cxj)");
 
-//    QString newPath = "E:\\Projects\\qt c++\\build-XMLEditor-Desktop_Qt_5_6_0_MinGW_32bit-Debug\\testCorr.xml";
+//    QString newPath = "test.xml";
     if (newPath != "") {
         setState(State::idle);
         setPath(newPath);
-        setText(m_controller->getText(path().toStdString()));
-        setParsed(m_controller->parsing(text()));
+
+        if (newPath.endsWith("cxj")) {
+            setParsed(m_controller->openCompressed(newPath.toStdString()));
+            setText(m_controller->beautifyXML(parsed()));
+        } else {
+            setText(m_controller->getText(path().toStdString()));
+            setParsed(m_controller->parsing(text()));
+        }
 
         displayText();
-        qDebug() << "number of lines =" << text()->size();
+//        qDebug() << "number of lines =" << text()->size();
         setWindowTitle(m_title + " - " + path());
 
         if (m_controller->checkBalance(parsed())) {
@@ -207,7 +214,8 @@ void MainWindow::closeXML()
 
 void MainWindow::saveText()
 {
-    QString savePath = QFileDialog::getSaveFileName(this, tr("save XML"), QDir::currentPath(), "XML files (*.xml);;JSON files(*.json)");
+    QString savePath = QFileDialog::getSaveFileName(this, tr("save XML"), QDir::currentPath(),
+                                                    "XML files (*.xml);;JSON files(*.json);;Compressed XML/JSON(*.cxj)");
     if (savePath.endsWith("xml")) {
         m_controller->saveText(savePath.toStdString(), text(),
                                m_textState != TextState::minified);
@@ -222,6 +230,9 @@ void MainWindow::saveText()
         m_controller->saveText(savePath.toStdString(), text(),
                                true);
         ui->statusBar->showMessage("JSON file saved.");
+    } else if (savePath.endsWith("cxj")) {
+        m_controller->saveCompressed(savePath.toStdString(), parsed());
+        ui->statusBar->showMessage("compressed XML/JSON file saved.");
     }
 }
 
@@ -278,20 +289,15 @@ void MainWindow::solveIncon()
     list<int> *corrected = nullptr;
     if (m_controller->solveIncon(parsed(), corrected)) {
         setState(State::xmlOpenedSuccessfully);
-        beautifyText();
+
+        setText(m_controller->beautifyXML(parsed()), false);
+        m_textState = TextState::beautified;
+        colorizeCorrect(parsed(), 64, corrected);
+
         ui->statusBar->showMessage("Correcting the file succeeded.");
     }
     else
         openingFailed();
-
-//    int i = 0;
-//    for (Token &t : *parsed()) {
-//        if (!corrected->empty() && i == corrected->front()) {
-//            qDebug() << QString::fromStdString(t.get_name()) << t.get_type();
-//            corrected->pop_front();
-//        }
-//        ++i;
-//    }
     delete corrected;
 }
 
@@ -335,6 +341,72 @@ void MainWindow::updateUndoAction()
 void MainWindow::updateRedoAction()
 {
     ui->actionRedo->setEnabled(!m_redo.empty());
+}
+
+void MainWindow::colorizeCorrect(list<Token> *tokens, unsigned int bufferSize, list<int> *indexes)
+{
+    int current_line =0;
+    int current_token =0;
+    int qstr_index =0;
+    list<int> lines;
+
+    bufferSize = 64u;
+    std::string *str = m_controller->listToString(text(), bufferSize,
+                                                  m_textState != TextState::minified);
+    QString qstr = QString::fromStdString(*str);
+    ui->textEdit->setPlainText("");
+
+    list<Token>::iterator itr;
+    for(itr = tokens->begin(); itr != tokens->end(); itr++)
+    {
+        if(indexes->size() == 0)
+            break;
+
+        if(current_token == indexes->front())
+        {
+            indexes->pop_front();
+            lines.push_back(current_line);
+        }
+
+        if(itr->get_name() != "")
+            current_line++;
+
+        current_line += itr->get_data().size();
+
+        current_token++;
+    }
+
+    current_line=0;
+
+    while(qstr[qstr_index] != '\0')
+    {
+        ui->textEdit->setTextColor(QColor(0,0,0));
+        ui->textEdit->insertPlainText(QString(qstr[qstr_index]));
+        ui->textEdit->moveCursor(QTextCursor::End);
+
+        if(lines.size() != 0)
+        {
+            if(qstr[qstr_index] == '\n')
+                current_line++;
+
+            if(current_line == lines.front())
+            {
+                lines.pop_front();
+                qstr_index++;
+                ui->textEdit->setTextColor(QColor(200,200,0));
+                while(qstr[qstr_index] != '>')
+                {
+                    ui->textEdit->insertPlainText(QString(qstr[qstr_index]));
+                    ui->textEdit->moveCursor(QTextCursor::End);
+                    qstr_index++;
+                }
+                ui->textEdit->insertPlainText(QString(qstr[qstr_index]));
+                ui->textEdit->moveCursor(QTextCursor::End);
+            }
+        }
+        qstr_index++;
+    }
+    ui->textEdit->moveCursor(QTextCursor::Start);
 }
 
 void MainWindow::colorizeText(unsigned int bufferSize) {
