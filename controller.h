@@ -127,6 +127,16 @@ public:
      *
      * */
     list<string>* json(list<Token>* tt);
+    
+        /*
+     * save compressed file
+     * */
+    void saveCompressed(const string &path, list<Token>* tokens);
+
+    /*
+     * open compressed file
+     * */
+    list<Token>* openCompressed(const string &path);
 };
 
 #endif // CONTROLLER_H
