@@ -53,6 +53,7 @@ private:
 
     void setActionsEnabled(bool enabled, bool isCon);
     void displayText(unsigned int bufferSize = 128);
+    void colorizeCorrect(list<Token> *tokens, unsigned int bufferSize = 64, list<int> *indexes = nullptr);
     void openingFailed();
     QString getExtension(const QString &str);
 
