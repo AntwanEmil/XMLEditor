@@ -223,7 +223,15 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
             Token t;
             Attribute atrTemp;
             while (line[charIndex] != '<')
-                charIndex++;
+            {
+                 charIndex++;
+                 if (line[charIndex] == '\0')
+                 {
+                     lineItr++;
+                     line = *lineItr;
+                     charIndex = 0;
+                 }
+            }
             charIndex++;
 
 
@@ -233,15 +241,20 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                 t.set_type(comment);
                 charIndex += 3;
 
-                if (line[charIndex] == '\0')
+                while(1)
                 {
-                    lineItr++;
-                    line = *lineItr;
-                    charIndex = 0;
-                }
+                    while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                        charIndex++;
 
-                while (line[charIndex] == ' ' || line[charIndex] == '\t')
-                    charIndex++;
+                    if (line[charIndex] == '\0')
+                    {
+                        lineItr++;
+                        line = *lineItr;
+                        charIndex = 0;
+                    }
+                    else
+                        break;
+                }
 
                 while (!(line[charIndex] == '-' && line[charIndex+1] == '-' && line[charIndex+2] == '>'))
                 {
@@ -253,11 +266,6 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                         lineItr++;
                         line = *lineItr;
                         charIndex = 0;
-                        t.add_data(tempStr);
-                        tempStr = "";
-
-                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
-                            charIndex++;
                     }
                 }
                 t.add_data(tempStr);
@@ -276,25 +284,68 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                         tempStr += line[charIndex];
                         charIndex++;
                     }
-                    charIndex++;
+
                     t.set_type(selfClosing);
                     t.set_name(tempStr);
                     tempStr = "";
 
-                    while (line[charIndex] != '?')
+                    while(1)
                     {
                         while (line[charIndex] == ' ' || line[charIndex] == '\t')
-                        {
                             charIndex++;
-                        }
 
+                        if (line[charIndex] == '\0')
+                        {
+                            lineItr++;
+                            line = *lineItr;
+                            charIndex = 0;
+                        }
+                        else
+                            break;
+                    }
+
+                    while (line[charIndex] != '?')
+                    {
                         while (qoutes < 2)
                         {
+                            while(1)
+                            {
+                                if(qoutes<1)
+                                {
+                                    while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                                        charIndex++;
+                                }
+
+                                if (line[charIndex] == '\0')
+                                {
+                                    lineItr++;
+                                    line = *lineItr;
+                                    charIndex = 0;
+                                }
+                                else
+                                    break;
+                            }
+
                             if (line[charIndex] == '=')
                             {
                                 atrTemp.setKey(tempStr);
                                 tempStr = "";
                                 charIndex++;
+
+                                while(1)
+                                {
+                                    while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                                        charIndex++;
+
+                                    if (line[charIndex] == '\0')
+                                    {
+                                        lineItr++;
+                                        line = *lineItr;
+                                        charIndex = 0;
+                                    }
+                                    else
+                                        break;
+                                }
                             }
                             tempStr += line[charIndex];
                             if (line[charIndex] == '"')
@@ -338,6 +389,12 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                     {
                         while (!(line[charIndex] == ' ' || line[charIndex] == '\t' || line[charIndex] == '>'))
                         {
+                            if (line[charIndex] == '\0')
+                            {
+                                lineItr++;
+                                line = *lineItr;
+                                charIndex = 0;
+                            }
                             tempStr += line[charIndex];
                             charIndex++;
                         }
@@ -345,9 +402,6 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                         tempStr = "";
                         atrTemp.setValue("");
                         t.add_attribute(atrTemp);
-
-                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
-                            charIndex++;
 
                         if(line[charIndex] == '>')
                         {
@@ -362,6 +416,13 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                 {
                     while (line[charIndex] != ' ' && line[charIndex] != '\t' && line[charIndex] != '>')
                     {
+                        if (line[charIndex] == '\0')
+                        {
+                            lineItr++;
+                            line = *lineItr;
+                            charIndex = 0;
+                        }
+
                         tempStr += line[charIndex];
                         charIndex++;
                     }
@@ -371,10 +432,21 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
 
                     while (line[charIndex] != '>')
                     {
-                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                        while(1)
                         {
-                            charIndex++;
+                            while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                                charIndex++;
+
+                            if (line[charIndex] == '\0')
+                            {
+                                lineItr++;
+                                line = *lineItr;
+                                charIndex = 0;
+                            }
+                            else
+                                break;
                         }
+
                         if (line[charIndex] != '>')
                         {
                             if (line[charIndex] == '/')
@@ -386,11 +458,43 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                             {
                                 while (qoutes < 2)
                                 {
+                                    while(1)
+                                    {
+                                        if(qoutes<1)
+                                        {
+                                            while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                                                charIndex++;
+                                        }
+
+                                        if (line[charIndex] == '\0')
+                                        {
+                                            lineItr++;
+                                            line = *lineItr;
+                                            charIndex = 0;
+                                        }
+                                        else
+                                            break;
+                                    }
+
                                     if (line[charIndex] == '=')
                                     {
                                         atrTemp.setKey(tempStr);
                                         tempStr = "";
                                         charIndex++;
+                                        while(1)
+                                        {
+                                            while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                                                charIndex++;
+
+                                            if (line[charIndex] == '\0')
+                                            {
+                                                lineItr++;
+                                                line = *lineItr;
+                                                charIndex = 0;
+                                            }
+                                            else
+                                                break;
+                                        }
                                     }
                                     tempStr += line[charIndex];
                                     if (line[charIndex] == '"')
@@ -406,33 +510,38 @@ list<Token>* Controller::parsing(list<string>* FileInfo)
                         }
                     }
                     charIndex++;
-                    if (line[charIndex] == '\0')
-                    {
-                        lineItr++;
-                        line = *lineItr;
-                        charIndex = 0;
-                    }
 
-                    while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                    while(1)
                     {
-                        charIndex++;
-                    }
-                    while (line[charIndex] != '<')
-                    {
-                        tempStr += line[charIndex];
-                        charIndex++;
+                        while (line[charIndex] == ' ' || line[charIndex] == '\t')
+                            charIndex++;
 
                         if (line[charIndex] == '\0')
                         {
                             lineItr++;
                             line = *lineItr;
                             charIndex = 0;
-                            t.add_data(tempStr);
-                            tempStr = "";
-
-                            while (line[charIndex] == ' ' || line[charIndex] == '\t')
-                                charIndex++;
                         }
+                        else
+                            break;
+                    }
+                    while (line[charIndex] != '<')
+                    {
+                        if((line[charIndex] == ' ' && (line[charIndex+1] == ' ' || line[charIndex+1] == '\0' || line[charIndex+1] == '\t' || line[charIndex+1] == '<' ))
+                                || line[charIndex] == '\t' || line[charIndex] == '\0')
+                        {}
+                        else
+                        {
+                            tempStr += line[charIndex];
+                        }
+
+                        if (line[charIndex] == '\0')
+                        {
+                            lineItr++;
+                            line = *lineItr;
+                            charIndex = 0;
+                        }
+                        charIndex++;
                     }
                     if (tempStr != "")
                     {
