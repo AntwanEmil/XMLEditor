@@ -18,6 +18,9 @@ private:
 	list <string> data;
 
 public:
+	Token(string n, tokenType t) : name(n), tType(t) {}
+    	Token() {}
+	
 	void set_name(string s);
 	string get_name();
 	
