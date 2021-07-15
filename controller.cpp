@@ -1,4 +1,5 @@
 #include "controller.h"
+#include "optimizer.h"
 
 #include <fstream>
 #include <algorithm>
@@ -677,4 +678,280 @@ list<string>* Controller::beautifyXML(list<Token>* tokens)
     }
 
     return beautifyStr;
+}
+
+list<string> *Controller::getText(const string &path)
+{
+    ifstream file;
+    file.open(path);
+    if (file.is_open()) {
+        string line;
+        list<string> *text = new list<string>;
+
+        unsigned int linesCount = 0;
+
+        while (linesCount < bufferSize() && getline(file, line)) {
+            text->push_back(line);
+            linesCount++;
+        }
+        file.close();
+        return text;
+    } else
+        return nullptr;
+}
+
+bool Controller::saveText(const string &path, list<string> *text, bool insertNewLine)
+{
+    ofstream file;
+    file.open(path);
+    if (file.is_open()) {
+        for (auto line : *text) {
+            file << line;
+            if (insertNewLine)
+                file << '\n';
+        }
+        file.close();
+        return true;
+    }
+    else
+        return false;
+}
+
+string *Controller::listToString(list<string> *text, unsigned int bufferSize, bool insertNewLine)
+{
+    string *str = new string;
+    unsigned int linesCount = 0, size = 0;
+    for (string line : *text) {
+        if (linesCount == bufferSize)
+            break;
+        size += line.size() + 1;
+        linesCount++;
+    }
+
+    str->resize(size+5, '\0');
+    linesCount = 0;
+    unsigned int i = 0;
+    for (string line : *text) {
+        if (linesCount == bufferSize)
+            break;
+        std::copy(line.begin(), line.end(), str->begin()+i);
+        i += line.size();
+        if (insertNewLine) {
+            (*str)[i] = '\n';
+            ++i;
+        }
+        ++linesCount;
+    }
+
+    return str;
+}
+
+list<string> *Controller::minifyText(list<Token> *tokens)
+{
+//    list<string> *newText = new list<string>;
+//    for (string line : *text) {
+////        std::remove(line.begin(), line.end(), ' ');
+////        std::remove(line.begin(), line.end(), '\t');
+////        std::remove(line.begin(), line.end(), '\r');
+////        while (isspace(line[0]))
+////            line.erase(line.begin(), line.begin()+1);
+//        line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+//        newText->push_back(line);
+//    }
+//    return newText;
+
+    list<string>* minifiedStr = new list<string>;
+    string tempStr = "";
+
+    list <Token>::iterator tokenItr;
+    for (tokenItr = tokens->begin(); tokenItr != tokens->end(); tokenItr++)
+    {
+        list<string>::iterator infoItr;
+        list<Attribute>::iterator attributeItr;
+        list<string> info;
+        list<Attribute> attr;
+        int tokenType = tokenItr->get_type();
+        tempStr = "";
+
+        if (tokenType == open)
+        {
+            tempStr = tempStr + '<' + tokenItr->get_name();
+
+            attr = tokenItr->get_attributes();
+            for (attributeItr = attr.begin(); attributeItr != attr.end(); attributeItr++)
+            {
+                tempStr = tempStr + " " + attributeItr->key() + "=" + attributeItr->value();
+            }
+            tempStr += '>';
+
+            minifiedStr->push_back(tempStr);
+            tempStr = "";
+
+            info = tokenItr->get_data();
+            if (info.size() > 0)
+                tempStr = *info.begin();
+            for (infoItr = ++info.begin(); infoItr != info.end(); infoItr++)
+                tempStr += " " + *infoItr;
+            minifiedStr->push_back(tempStr);
+        }
+        else if (tokenType == closing)
+        {
+            tempStr = tempStr + "</" + tokenItr->get_name() + '>';
+            minifiedStr->push_back(tempStr);
+        }
+        else if (tokenType == comment)
+        {
+//            int once = 1;
+            tempStr = "<!-- ";
+            info = tokenItr->get_data();
+            tempStr += *info.begin();
+            for (infoItr = ++info.begin(); infoItr != info.end(); infoItr++) {
+//                if (once)
+//                    once = 0;
+//                else
+//                {
+//                    minifiedStr->push_back(tempStr);
+//                    tempStr = "";
+//                    tempStr += "     ";
+//                }
+                tempStr += " " + *infoItr;
+            }
+            tempStr += "-->";
+            minifiedStr->push_back(tempStr);
+        }
+        else if (tokenType == selfClosing)
+        {
+            string name = tokenItr->get_name();
+            tempStr += '<';
+            if (name[0] == 'x' && name[1] == 'm' && name[2] == 'l')
+                tempStr = tempStr + '?';
+
+            else if(name == "DOCTYPE")
+            {
+                tempStr = tempStr + '!';
+            }
+
+            tempStr += name;
+
+            attr = tokenItr->get_attributes();
+            for (attributeItr = attr.begin(); attributeItr != attr.end(); attributeItr++)
+            {
+                if(name == "DOCTYPE")
+                     tempStr = tempStr + " " + attributeItr->key();
+                else
+                    tempStr = tempStr + " " + attributeItr->key() + "=" + attributeItr->value();
+            }
+
+            if (name[0] == 'x' && name[1] == 'm' && name[2] == 'l')
+                tempStr = tempStr + '?';
+            else if (name == "DOCTYPE")
+            {}
+            else
+                tempStr = tempStr + '/';
+            tempStr += '>';
+
+            minifiedStr->push_back(tempStr);
+        }
+    }
+
+    return minifiedStr;
+}
+
+bool Controller::solveIncon(list<Token> *tokens, list<int> *&added)
+{
+    std::stack<std::string> st;
+    string name;
+    added = new list<int>;
+
+    int i = 0;
+    for (list<Token>::iterator itr = tokens->begin(), temp; itr != tokens->end(); ++itr, ++i) {
+        switch (itr->get_type()) {
+        case tokenType::open:
+            name = itr->get_name();
+            if (!st.empty() && name == st.top()) {
+                tokens->insert(itr, Token (name, tokenType::closing));
+                st.pop();
+                added->push_back(i++);
+            }
+            if (itr->get_data().size() > 0) {
+                temp = itr;
+                ++temp;
+                if (temp != tokens->end() && temp->get_type() != tokenType::closing) {
+                    tokens->insert(temp, Token(name, closing));
+                    added->push_back(i+1);
+                }
+            }
+            st.push(name);
+            break;
+
+        case tokenType::closing:
+            if (!st.empty() && st.top() != itr->get_name()) {
+                itr->set_name(st.top());
+                added->push_back(i);
+            }
+            if (st.empty())
+                return false;
+            st.pop();
+            break;
+
+        default: break;
+        }
+    }
+    while (!st.empty()) {
+        tokens->push_back(Token(st.top(), tokenType::closing));
+        added->push_back(i++);
+        st.pop();
+    }
+    return true;
+}
+
+
+
+bool Controller::checkBalance(list<Token> *Nodess)
+{
+    list<Token>::iterator t;
+    stack<string> s;
+//    list<Token> Nodess = Nodes;
+    for (t = Nodess->begin(); t != Nodess->end(); ++t)
+    {
+//        Token t = Nodess.front();
+        if (t->get_type() == open)
+        {
+            s.push(t->get_name());
+        }
+        else if (t->get_type() == closing)
+        {
+            if (s.empty())
+            {
+                return 0;
+            }
+            if (t->get_name() == s.top())
+            {
+                s.pop();
+            }
+            else if (t->get_name() != s.top())
+            {
+                return 0;
+            }
+        }
+//        Nodess.pop_front();
+    }
+    if (!s.empty())
+    {
+        return 0;
+    }
+    return 1;
+}
+
+
+void Controller::saveCompressed(const string &path, list<Token> *tokens)
+{
+    Optimizer opt;
+    opt.writeFile(path, tokens);
+}
+
+list<Token> *Controller::openCompressed(const string &path)
+{
+    Optimizer opt;
+    return opt.readFile(path);
 }
