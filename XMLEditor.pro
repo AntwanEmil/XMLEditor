@@ -17,13 +17,15 @@ SOURCES += main.cpp\
     controller.cpp \
     attribute.cpp \
     Tokens.cpp \
-    helper.cpp
+    helper.cpp \
+    optimizer.cpp
 
 HEADERS  += mainwindow.h \
     controller.h \
     helper.h \
     stack.h \
     attribute.h \
-    Tokens.h
+    Tokens.h \
+    optimizer.h
 
 FORMS    += mainwindow.ui
